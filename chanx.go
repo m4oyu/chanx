@@ -1,6 +1,11 @@
 package chanx
 
-import "sync"
+import (
+	"fmt"
+	"runtime"
+	"strings"
+	"sync"
+)
 
 type msg struct {
 	v  interface{}
@@ -25,6 +30,8 @@ type c struct {
 	cond   *sync.Cond
 	c      chan msg
 	closed bool
+
+	cid int
 }
 
 // Make new channel. Provide a length to make a buffered channel.
@@ -37,12 +44,26 @@ func Make(length int) C {
 func (c *c) Send(v interface{}) (ok bool) {
 	defer func() { ok = recover() == nil }()
 	c.c <- msg{v, true}
+
+	// visualize
+	stackSlice := make([]byte, 2048)
+	s := runtime.Stack(stackSlice, false)
+	r := strings.Split(strings.Split(string(stackSlice[0:s]), "\n")[0], " ")
+	fmt.Printf("%v %v SEND \"%v\" via channel %v\n", r[0], r[1], v, c.cid)
+
 	return
 }
 
 func (c *c) Recv() (v interface{}, ok bool) {
 	select {
 	case msg := <-c.c:
+
+		// visualize
+		stackSlice := make([]byte, 2048)
+		s := runtime.Stack(stackSlice, false)
+		r := strings.Split(strings.Split(string(stackSlice[0:s]), "\n")[0], " ")
+		fmt.Printf("%v %v SEND \"%v\" via channel %v\n", r[0], r[1], v, c.cid)
+
 		return msg.v, msg.ok
 	}
 }
